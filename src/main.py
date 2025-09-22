@@ -10,7 +10,7 @@ from strategy import detect_signal
 from trader import send_market_order
 from risk_manager import lot_by_risk
 from notifier import notify_console
-from monitor import run_loop
+from monitor import run_loop, running
 
 # ================================
 # === CONFIG DARI .env ===========
@@ -50,7 +50,6 @@ start_balance = None
 target_balance = None
 min_balance = None
 start_time = None
-running = True
 
 
 # ================================
@@ -60,6 +59,10 @@ def on_tick(account_info, candles, positions):
     global trades_today, loss_today, running
 
     # Jika bot sudah stop, jangan proses lagi
+    if not running:
+        return
+
+    # Double check untuk memastikan loop berhenti segera
     if not running:
         return
 
@@ -140,9 +143,7 @@ def main():
 
     try:
         tf = map_timeframe(TIMEFRAME)
-        while running:
-            run_loop(SYMBOL, tf, on_tick)
-            time.sleep(POLL_INTERVAL)
+        run_loop(SYMBOL, tf, on_tick)
     finally:
         shutdown()
         # === Summary ===

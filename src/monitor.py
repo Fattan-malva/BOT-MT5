@@ -1,10 +1,25 @@
 import time
 import os
+import signal
+import sys
 from connector import get_candles, get_account_info, symbol_select, get_positions, get_history
 from tabulate import tabulate
 from datetime import datetime, date
 
 POLL_INTERVAL = int(os.getenv('POLL_INTERVAL', '30'))  # Match main.py setting
+
+# Global flag untuk kontrol running state
+running = True
+
+def signal_handler(signum, frame):
+    """Handle Ctrl+C signal"""
+    global running
+    print(f"\n{YELLOW}Received interrupt signal, stopping gracefully...{RESET}")
+    running = False
+    # Give the loop a moment to stop gracefully
+    time.sleep(1)
+    print(f"{YELLOW}Forcing exit if still running...{RESET}")
+    sys.exit(0)
 
 # ANSI color
 GREEN = '\033[92m'
@@ -148,15 +163,20 @@ def print_monitor(account, positions, history):
     print()
 
 def run_loop(symbol, timeframe, on_tick):
+    global running
+
     if not symbol_select(symbol):
         print(f'Warning: cannot select symbol {symbol} in MarketWatch. Make sure symbol available in terminal.')
-    
+
+    # Register signal handler untuk graceful shutdown
+    signal.signal(signal.SIGINT, signal_handler)
+
     print(f"{YELLOW}Starting monitoring for {symbol} on {timeframe} timeframe...{RESET}")
     print(f"{YELLOW}Press Ctrl+C to stop monitoring.{RESET}")
     time.sleep(2)
-    
+
     try:
-        while True:
+        while running:
             account = get_account_info()
             candles = get_candles(symbol, timeframe, n=500)
             positions = get_positions(symbol)
@@ -164,7 +184,7 @@ def run_loop(symbol, timeframe, on_tick):
             print_monitor(account, positions, history)
             on_tick(account, candles, positions)
             time.sleep(POLL_INTERVAL)
-    except KeyboardInterrupt:
-        print(f"\n{YELLOW}Monitoring stopped by user.{RESET}")
     except Exception as e:
         print(f'{RED}Monitor loop error: {e}{RESET}')
+    finally:
+        print(f"\n{YELLOW}Monitoring stopped.{RESET}")
