@@ -9,8 +9,8 @@ from connector import initialize, shutdown, get_account_info, get_positions, sym
 from strategy import detect_signal
 from trader import send_market_order
 from risk_manager import lot_by_risk
-from notifier import notify_console
-from monitor import run_loop, running
+from notifier import notify_console, notify_signal
+from monitor import run_loop, running, CYAN, RESET
 
 # ================================
 # === CONFIG DARI .env ===========
@@ -77,25 +77,25 @@ def on_tick(account_info, candles, positions):
 
     # stop jika sudah loss melebihi limit harian
     if loss_today <= -abs(DAILY_LOSS_LIMIT):
-        notify_console("Daily loss limit reached, stopping new entries.")
+        notify_console(f"🛑 Daily loss limit reached, stopping new entries.")
         running = False
         return
 
     # stop jika sudah mencapai max trade per hari
     if trades_today >= MAX_TRADES_PER_DAY:
-        notify_console("Max trades per day reached, skipping entries.")
+        notify_console(f"🛑 Max trades per day reached, skipping entries.")
         running = False
         return
 
     # stop jika sudah mencapai target balance
     if balance >= target_balance:
-        notify_console(f"Target balance {target_balance} reached ✅. Stopping bot.")
+        notify_console(f"🎯 Target balance {target_balance} reached! Stopping bot.")
         running = False
         return
 
     # stop jika sudah mencapai batas bawah saldo
     if balance <= min_balance:
-        notify_console(f"Min balance {min_balance} reached ❌. Stopping bot.")
+        notify_console(f"🛑 Min balance {min_balance} reached! Stopping bot.")
         running = False
         return
 
@@ -108,10 +108,7 @@ def on_tick(account_info, candles, positions):
             take_profit = sig["tp_band"]
 
             lot = lot_by_risk(SYMBOL, entry, stop_loss, RISK_PERCENT, min_lot=MIN_LOT)
-            notify_console(
-                f"Signal {sig['action']} {SYMBOL} "
-                f"price={entry} sl={stop_loss} tp={take_profit} lot={lot}"
-            )
+            notify_signal(sig['action'], SYMBOL, entry, stop_loss, take_profit, lot)
 
             res = send_market_order(SYMBOL, sig["action"], lot, stop_loss, take_profit)
             notify_console(f"Order send result: {getattr(res,'retcode',None)} {getattr(res,'comment',None)}")
@@ -127,7 +124,7 @@ def on_tick(account_info, candles, positions):
 def main():
     global start_balance, target_balance, min_balance, start_time, running
 
-    print("Starting MT5 Python Autobot")
+    print("🚀 Starting MT5 Python Autobot")
 
     initialize(path=MT5_PATH, login=MT5_LOGIN, password=MT5_PASSWORD, server=MT5_SERVER)
 
@@ -153,13 +150,16 @@ def main():
         final_balance = acc.get("balance", 0)
         profit = final_balance - start_balance
 
-        print("\n===== BOT SUMMARY =====")
-        print(f"Start Balance : {start_balance}")
-        print(f"End Balance   : {final_balance}")
-        print(f"Profit/Loss   : {profit}")
-        print(f"Total Trades  : {trades_today}")
-        print(f"Runtime       : {duration}")
-        print("=======================")
+        print(f"\n{CYAN}📊 ===== BOT SUMMARY ====={RESET}")
+        print(f"💰 Start Balance : {start_balance}")
+        print(f"💰 End Balance   : {final_balance}")
+        if profit >= 0:
+            print(f"💚 Profit/Loss   : +{profit}")
+        else:
+            print(f"❤️ Profit/Loss   : {profit}")
+        print(f"📈 Total Trades  : {trades_today}")
+        print(f"⏱️  Runtime       : {duration}")
+        print(f"{CYAN}========================{RESET}")
 
 
 if __name__ == "__main__":

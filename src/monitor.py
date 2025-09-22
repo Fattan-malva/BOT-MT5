@@ -30,6 +30,22 @@ BLUE = '\033[94m'
 MAGENTA = '\033[95m'
 RESET = '\033[0m'
 
+# Emojis untuk tampilan
+EMOJI_CHART = "📊"
+EMOJI_MONEY = "💰"
+EMOJI_ROCKET = "🚀"
+EMOJI_CHART_DOWN = "📉"
+EMOJI_HISTORY = "📈"
+EMOJI_SETTINGS = "⚙️"
+EMOJI_ARROW_UP = "⬆️"
+EMOJI_ARROW_DOWN = "⬇️"
+EMOJI_BUY = "🟢"
+EMOJI_SELL = "🔴"
+EMOJI_TARGET = "🎯"
+EMOJI_STOP = "🛑"
+EMOJI_PROFIT = "💚"
+EMOJI_LOSS = "❤️"
+
 def format_currency(value):
     """Format nilai dengan 2 digit desimal, pakai titik sebagai pemisah ribuan"""
     return f"{value:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
@@ -50,11 +66,11 @@ def format_percentage(value, total):
 def print_monitor(account, positions, history):
     os.system('cls' if os.name == 'nt' else 'clear')
     current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    print(f"{CYAN}=== TRADING MONITOR [{current_time}] ==={RESET}")
+    print(f"{CYAN}{EMOJI_CHART} === TRADING MONITOR [{current_time}] ==={RESET}")
     print()
-    
+
     # Account Information - Tabel
-    print(f"{BLUE}=== ACCOUNT INFORMATION ==={RESET}")
+    print(f"{BLUE}{EMOJI_MONEY} === ACCOUNT INFORMATION ==={RESET}")
     account_data = [
         ["Balance", format_currency(account['balance'])],
         ["Equity", format_currency(account['equity'])],
@@ -62,11 +78,11 @@ def print_monitor(account, positions, history):
         ["Margin Used", format_currency(account['balance'] - account['free_margin'])],
         ["Margin Level", format_percentage(account['equity'], account['balance'] - account['free_margin']) if account['balance'] - account['free_margin'] > 0 else "N/A"]
     ]
-    print(tabulate(account_data, tablefmt="grid"))
+    print(tabulate(account_data, tablefmt="grid", colalign=("left", "right")))
     print()
     
     # Open Positions - Tabel dengan ringkasan
-    print(f"{BLUE}=== OPEN POSITIONS ==={RESET}")
+    print(f"{BLUE}{EMOJI_ROCKET} === OPEN POSITIONS ==={RESET}")
     if positions:
         # Ringkasan posisi
         total_profit = sum(pos['profit'] for pos in positions)
@@ -76,8 +92,17 @@ def print_monitor(account, positions, history):
         positions_data = []
         for pos in positions:
             profit_color = GREEN if pos['profit'] >= 0 else RED
+            # Tambahkan emoji untuk buy/sell (compact)
+            position_type = pos['type']
+            if position_type == 'buy' or position_type == 'BUY':
+                type_with_emoji = f"{EMOJI_BUY} BUY"
+            elif position_type == 'sell' or position_type == 'SELL':
+                type_with_emoji = f"{EMOJI_SELL} SELL"
+            else:
+                type_with_emoji = f"{position_type:<8}"
+
             positions_data.append([
-                pos['type'],
+                type_with_emoji,
                 pos['symbol'],
                 pos['volume'],
                 format_currency(pos['price_open']),
@@ -86,9 +111,9 @@ def print_monitor(account, positions, history):
                 f"{profit_color}{format_currency(pos['profit'])}{RESET}"
             ])
         
-        # Header tabel
-        headers = ["Type", "Symbol", "Volume", "Open Price", "SL", "TP", "Profit"]
-        print(tabulate(positions_data, headers=headers, tablefmt="grid"))
+        # Header tabel dengan lebar kolom yang disesuaikan
+        headers = ["Type    ", "Symbol", "Volume", "Open Price", "SL", "TP", "Profit"]
+        print(tabulate(positions_data, headers=headers, tablefmt="grid", colalign=("left", "left", "right", "right", "right", "right", "right")))
         
         # Ringkasan
         print(f"\n{YELLOW}Summary:{RESET}")
@@ -100,7 +125,7 @@ def print_monitor(account, positions, history):
     print()
     
     # Trading History - Tabel dengan ringkasan
-    print(f"{BLUE}=== TRADING HISTORY (Last 10) ==={RESET}")
+    print(f"{BLUE}{EMOJI_HISTORY} === TRADING HISTORY (Last 10) ==={RESET}")
     if history:
         # Urutkan history dari terbaru ke terlama (pastikan history sudah diurutkan)
         sorted_history = sorted(history, key=lambda h: h.get('time_close', 0), reverse=True)
@@ -124,8 +149,18 @@ def print_monitor(account, positions, history):
         for h in recent_history:
             profit_color = GREEN if h['profit'] >= 0 else RED
             close_time_str = datetime.fromtimestamp(h['time_close']).strftime('%Y-%m-%d %H:%M') if 'time_close' in h else '-'
+
+            # Tambahkan emoji untuk buy/sell (compact)
+            history_type = h['type']
+            if history_type == 'buy' or history_type == 'BUY':
+                type_with_emoji = f"{EMOJI_BUY} BUY"
+            elif history_type == 'sell' or history_type == 'SELL':
+                type_with_emoji = f"{EMOJI_SELL} SELL"
+            else:
+                type_with_emoji = f"{history_type:<8}"
+
             history_data.append([
-                h['type'],
+                type_with_emoji,
                 h['symbol'],
                 h['volume'],
                 format_currency(h['price_open']),
@@ -134,8 +169,8 @@ def print_monitor(account, positions, history):
                 f"{profit_color}{format_currency(h['profit'])}{RESET}"
             ])
 
-        headers = ["Type", "Symbol", "Volume", "Open Price", "Close Price", "Close Time", "Profit"]
-        print(tabulate(history_data, headers=headers, tablefmt="grid"))
+        headers = ["Type    ", "Symbol", "Volume", "Open Price", "Close Price", "Close Time", "Profit"]
+        print(tabulate(history_data, headers=headers, tablefmt="grid", colalign=("left", "left", "right", "right", "right", "left", "right")))
 
         # Ringkasan
         print(f"\n{YELLOW}Summary (Last 10 Trades):{RESET}")
@@ -154,12 +189,12 @@ def print_monitor(account, positions, history):
     print()
     
     # System Information
-    print(f"{BLUE}=== SYSTEM INFORMATION ==={RESET}")
+    print(f"{BLUE}{EMOJI_SETTINGS} === SYSTEM INFORMATION ==={RESET}")
     system_data = [
         ["Poll Interval", f"{POLL_INTERVAL} seconds"],
         ["Next Update", f"in {POLL_INTERVAL} seconds"]
     ]
-    print(tabulate(system_data, tablefmt="grid"))
+    print(tabulate(system_data, tablefmt="grid", colalign=("left", "left")))
     print()
 
 def run_loop(symbol, timeframe, on_tick):
